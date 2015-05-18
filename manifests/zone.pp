@@ -46,6 +46,8 @@ define dns::zone (
   $zone_file = "${dns::server::params::data_dir}/db.${name}"
   $zone_file_stage = "${zone_file}.stage"
 
+
+  $validate_zone_cmd = ''
   if $ensure == absent {
     file { $zone_file:
       ensure => absent,
@@ -53,14 +55,20 @@ define dns::zone (
   } elsif $zone_type == 'master' {
     # Zone Database
 
+    #check the zone if the puppet version supports it
+    if versioncmp($::puppetversion, '3.5') >= 0 {
+      Concat[$zone_file_stage] {validate_cmd => 'named-checkzone localhost %'}
+    }
+
     # Create "fake" zone file without zone-serial
     concat { $zone_file_stage:
-      owner   => $dns::server::params::owner,
-      group   => $dns::server::params::group,
-      mode    => '0644',
-      require => [Class['concat::setup'], Class['dns::server']],
-      notify  => Exec["bump-${zone}-serial"]
+      owner        => $dns::server::params::owner,
+      group        => $dns::server::params::group,
+      mode         => '0644',
+      require      => [Class['concat::setup'], Class['dns::server']],
+      notify       => Exec["bump-${zone}-serial"]
     }
+
     concat::fragment{"db.${name}.soa":
       target  => $zone_file_stage,
       order   => 1,
