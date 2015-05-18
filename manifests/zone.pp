@@ -57,7 +57,9 @@ define dns::zone (
 
     #check the zone if the puppet version supports it
     if versioncmp($::puppetversion, '3.5') >= 0 {
-      Concat[$zone_file_stage] {validate_cmd => 'named-checkzone localhost %'}
+      Concat[$zone_file_stage] {
+        validate_cmd => 'named-checkzone localhost %',
+      }
     }
 
     # Create "fake" zone file without zone-serial
