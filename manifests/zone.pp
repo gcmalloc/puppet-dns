@@ -143,6 +143,7 @@ define dns::zone (
   $zone_retry = '86400',
   $zone_expire = '2419200',
   $zone_minimum = '604800',
+  $validate_zone_cmd = '/usr/bin/named-checkzone <%= @zone %> %',
   $nameservers = [ $::fqdn ],
   $reverse = false,
   $zone_type = 'master',
@@ -155,7 +156,7 @@ define dns::zone (
   $also_notify = [],
   $ensure = present
 ) {
-
+  
   $cfg_dir = $dns::server::params::cfg_dir
 
   validate_array($allow_transfer)
@@ -186,6 +187,10 @@ define dns::zone (
   $zone_file = "${dns::server::params::data_dir}/db.${name}"
   $zone_file_stage = "${zone_file}.stage"
 
+  if $validate_zone_cmd {
+    validate_string($validate_zone_cmd)
+  }
+
   if $ensure == absent {
     file { $zone_file:
       ensure => absent,
@@ -200,6 +205,9 @@ define dns::zone (
       mode    => '0644',
       require => Class['dns::server'],
       notify  => Exec["bump-${zone}-serial"]
+    }
+    if versioncmp($::puppetversion, '3.5') >= 0 {
+      Concat[$zone_file_stage] {validate_cmd => inline_template($validate_zone_cmd)}
     }
     concat::fragment{"db.${name}.soa":
       target  => $zone_file_stage,
